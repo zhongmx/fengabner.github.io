@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/Z.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"www.fengabner.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="ReentrantLock 简单介绍ReentrantLock是实现了Lock接口。 特点 支持可重入 可中断 支持公平锁和非公平锁 支持多个条件变量设置 可以设置超时时间">
+<meta property="og:type" content="article">
+<meta property="og:title" content="java并发之ReentrantLock简单介绍">
+<meta property="og:url" content="http://www.fengabner.com/2020/07/17/java%E5%B9%B6%E5%8F%91%E4%B9%8BReentrantLock%E7%AE%80%E5%8D%95%E4%BB%8B%E7%BB%8D/index.html">
+<meta property="og:site_name" content="technology">
+<meta property="og:description" content="ReentrantLock 简单介绍ReentrantLock是实现了Lock接口。 特点 支持可重入 可中断 支持公平锁和非公平锁 支持多个条件变量设置 可以设置超时时间">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://www.fengabner.com/.com//image-20200804165753248.png">
+<meta property="og:image" content="http://www.fengabner.com/.com//image-20200730144344679.png">
+<meta property="article:published_time" content="2020-07-17T14:31:54.000Z">
+<meta property="article:modified_time" content="2021-04-12T03:14:08.060Z">
+<meta property="article:author" content="fengabner">
+<meta property="article:tag" content="java">
+<meta property="article:tag" content="并发">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://www.fengabner.com/.com//image-20200804165753248.png">
+
+<link rel="canonical" href="http://www.fengabner.com/2020/07/17/java%E5%B9%B6%E5%8F%91%E4%B9%8BReentrantLock%E7%AE%80%E5%8D%95%E4%BB%8B%E7%BB%8D/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>java并发之ReentrantLock简单介绍 | technology</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">technology</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">芝兰生于幽谷，不以无人而不芳</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-commonweal">
+
+    <a href="/404/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>公益 404</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://www.fengabner.com/2020/07/17/java%E5%B9%B6%E5%8F%91%E4%B9%8BReentrantLock%E7%AE%80%E5%8D%95%E4%BB%8B%E7%BB%8D/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="fengabner">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="technology">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          java并发之ReentrantLock简单介绍
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-07-17 22:31:54" itemprop="dateCreated datePublished" datetime="2020-07-17T22:31:54+08:00">2020-07-17</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-04-12 11:14:08" itemprop="dateModified" datetime="2021-04-12T11:14:08+08:00">2021-04-12</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">所属分类</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java-%E5%B9%B6%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">java 并发</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">评论数：</span>
+    
+    <a title="valine" href="/2020/07/17/java%E5%B9%B6%E5%8F%91%E4%B9%8BReentrantLock%E7%AE%80%E5%8D%95%E4%BB%8B%E7%BB%8D/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/07/17/java%E5%B9%B6%E5%8F%91%E4%B9%8BReentrantLock%E7%AE%80%E5%8D%95%E4%BB%8B%E7%BB%8D/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="ReentrantLock-简单介绍"><a href="#ReentrantLock-简单介绍" class="headerlink" title="ReentrantLock 简单介绍"></a>ReentrantLock 简单介绍</h1><p>ReentrantLock是实现了Lock接口。</p>
+<h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><ul>
+<li>支持可重入</li>
+<li>可中断</li>
+<li>支持公平锁和非公平锁</li>
+<li>支持多个条件变量设置</li>
+<li>可以设置超时时间</li>
+</ul>
+<a id="more"></a>
+
+<h2 id="基本语法"><a href="#基本语法" class="headerlink" title="基本语法"></a>基本语法</h2><p>ReentrantLock 中的 lock 和 unlock 是需要成对出现的。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> Lock lock = <span class="keyword">new</span> ReentrantLock() ;</span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">await</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">         lock.lock();<span class="comment">//加锁</span></span><br><span class="line">    &#125;  <span class="keyword">finally</span> &#123;</span><br><span class="line">        lock.unlock();<span class="comment">//释放锁</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="Lock-api"><a href="#Lock-api" class="headerlink" title="Lock api"></a>Lock api</h1><p><img src="/.com//image-20200804165753248.png" alt="image-20200804165753248"></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Lock</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 获取锁，若当前lock已经被其他线程获取时,则当前线程会被阻塞一直到lock被释放。采用lock,必须主动去释放锁，并且在发生异常时，不会自动释放锁</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取锁，若当前锁不可用,则当前线程会被阻塞,等待获取锁，在等待过程中这个线程能够响应中断，即中断线程的等待状态,会抛出异常</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">lockInterruptibly</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 尝试获取锁，如果获取成功，则返回true,如果获取失败（即锁已被其他线程获取），则返回false。这个方法无论如何都会立即返回</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">tryLock</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果锁在给定等待时间内没有被另一个线程持有，并且当前线程未被中断，则获取该锁</span></span><br><span class="line">    <span class="comment">// 等待过程中，可以被中断</span></span><br><span class="line">    <span class="comment">// 超过时间，依然获取不到，则返回false；否则返回true</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">tryLock</span><span class="params">(<span class="keyword">long</span> time, TimeUnit unit)</span> <span class="keyword">throws</span> InterruptedException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 释放锁</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">unlock</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 返回一个绑定该lock的Condtion对象</span></span><br><span class="line">    <span class="comment">// 在Condition await()之前，锁会被该线程持有</span></span><br><span class="line">    <span class="comment">// Condition await()之后 会自动释放锁，在wait返回之后，会自动获取锁</span></span><br><span class="line">    <span class="function">Condition <span class="title">newCondition</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="ReentrantLock-api"><a href="#ReentrantLock-api" class="headerlink" title="ReentrantLock api"></a>ReentrantLock api</h1><p><img src="/.com//image-20200730144344679.png" alt="image-20200730144344679"></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ReentrantLock</span><span class="params">()</span><span class="comment">// 默认非公平锁</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ReentrantLock</span><span class="params">(<span class="keyword">boolean</span> fair)</span><span class="comment">// fair为true表示是公平锁，fair为false表示是非公平锁</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span><span class="comment">// 获取锁</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">lockInterruptibly</span><span class="params">()</span><span class="comment">// 中断等待获取锁的线程,如果当前线程未被中断,则去获取锁,已被中断则抛异常</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">tryLock</span><span class="params">()</span><span class="comment">// 在调用时,锁如果没有被另一个线程持有的情况下，才获取该锁</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">tryLock</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span><span class="comment">// 如果锁在给定等待时间内没有被另一个线程持有，并且当前线程未被中断，则获取该锁</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">unlock</span><span class="params">()</span><span class="comment">// 释放锁</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Condition <span class="title">newCondition</span><span class="params">()</span><span class="comment">// 返回用来与此 Lock 实例一起使用的 Condition 实例</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getHoldCount</span><span class="params">()</span><span class="comment">// 查询当前线程保持锁定的个数，也就是调用lock()方法的个数</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">isHeldByCurrentThread</span><span class="params">()</span><span class="comment">// 查询当前线程是否持有此锁</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">isLocked</span><span class="params">()</span><span class="comment">// 查询此锁是否由任意线程所持有</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">isFair</span><span class="params">()</span><span class="comment">// 判断是否是公平锁,如果是公平锁返回true，否则返回false</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> Thread <span class="title">getOwner</span><span class="params">()</span><span class="comment">// 返回当前拥有此锁的线程，如果此锁不被任何线程拥有，则返回 null</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">hasQueuedThreads</span><span class="params">()</span><span class="comment">// 查询是否有线程正在等待获取此锁</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">hasQueuedThread</span><span class="params">(Thread thread)</span><span class="comment">// 查询指定线程是否正在等待获取此锁</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">getQueueLength</span><span class="params">()</span><span class="comment">// 返回正在等待获取此锁的线程估计数</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> Collection&lt;Thread&gt; <span class="title">getQueuedThreads</span><span class="params">()</span><span class="comment">// 返回一个 collection，它包含可能正等待获取此锁的线程</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">hasWaiters</span><span class="params">(Condition condition)</span><span class="comment">// 查询是否有线程正在等待与此锁有关的指定条件</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getWaitQueueLength</span><span class="params">(Condition condition)</span><span class="comment">// 返回正在等待与此锁相关的指定条件的线程估计数</span></span></span><br><span class="line"><span class="function">  </span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> Collection&lt;Thread&gt; <span class="title">getWaitingThreads</span><span class="params">(Condition condition)</span><span class="comment">// 返回一个 collection，它包含可能正在等待与此锁相关指定条件的哪些线程</span></span></span><br></pre></td></tr></table></figure>
+
+
+
+<h1 id="ReentrantLock-简单使用"><a href="#ReentrantLock-简单使用" class="headerlink" title="ReentrantLock 简单使用"></a>ReentrantLock 简单使用</h1><h2 id="lock-和-unlock"><a href="#lock-和-unlock" class="headerlink" title="lock() 和 unlock()"></a>lock() 和 unlock()</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ReentrantLockOneTest</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">MyService</span></span>&#123;</span><br><span class="line">        <span class="keyword">private</span> Lock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">void</span> <span class="title">testMethod</span><span class="params">()</span></span>&#123;</span><br><span class="line">            lock.lock();<span class="comment">//获取锁</span></span><br><span class="line"></span><br><span class="line">            System.out.println(<span class="string">"线程 【"</span>+Thread.currentThread().getName()+<span class="string">"】 进来了 获取到锁 开始"</span>);</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;<span class="number">4</span>;i++)&#123;</span><br><span class="line">                System.out.println(Thread.currentThread().getName() +(i+<span class="number">1</span>));</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            System.out.println(<span class="string">"线程 【"</span>+Thread.currentThread().getName()+<span class="string">"】 释放锁 结束"</span>);</span><br><span class="line">            lock.unlock();<span class="comment">//释放锁</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">MyThread</span> <span class="keyword">extends</span> <span class="title">Thread</span></span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">private</span> MyService myService;</span><br><span class="line"></span><br><span class="line">        MyThread(MyService myService)&#123;</span><br><span class="line">            <span class="keyword">super</span>();</span><br><span class="line">            <span class="keyword">this</span>.myService = myService;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span></span>&#123;</span><br><span class="line">            myService.testMethod();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        MyService service = <span class="keyword">new</span> MyService();</span><br><span class="line"></span><br><span class="line">        MyThread a1 = <span class="keyword">new</span> MyThread(service);</span><br><span class="line">        MyThread a2 = <span class="keyword">new</span> MyThread(service);</span><br><span class="line">        MyThread a3 = <span class="keyword">new</span> MyThread(service);</span><br><span class="line">        MyThread a4 = <span class="keyword">new</span> MyThread(service);</span><br><span class="line">        MyThread a5 = <span class="keyword">new</span> MyThread(service);</span><br><span class="line"></span><br><span class="line">        a1.setName(<span class="string">"a1==&gt;"</span>);</span><br><span class="line">        a1.start();</span><br><span class="line"></span><br><span class="line">        a2.setName(<span class="string">"a2==&gt;"</span>);</span><br><span class="line">        a2.start();</span><br><span class="line"></span><br><span class="line">        a3.setName(<span class="string">"a3==&gt;"</span>);</span><br><span class="line">        a3.start();</span><br><span class="line"></span><br><span class="line">        a4.setName(<span class="string">"a4==&gt;"</span>);</span><br><span class="line">        a4.start();</span><br><span class="line"></span><br><span class="line">        a5.setName(<span class="string">"a5==&gt;"</span>);</span><br><span class="line">        a5.start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">线程 【a1&#x3D;&#x3D;&gt;】 进来了 获取到锁 开始</span><br><span class="line">a1&#x3D;&#x3D;&gt;1</span><br><span class="line">a1&#x3D;&#x3D;&gt;2</span><br><span class="line">a1&#x3D;&#x3D;&gt;3</span><br><span class="line">a1&#x3D;&#x3D;&gt;4</span><br><span class="line">线程 【a1&#x3D;&#x3D;&gt;】 释放锁 结束</span><br><span class="line">线程 【a2&#x3D;&#x3D;&gt;】 进来了 获取到锁 开始</span><br><span class="line">a2&#x3D;&#x3D;&gt;1</span><br><span class="line">a2&#x3D;&#x3D;&gt;2</span><br><span class="line">a2&#x3D;&#x3D;&gt;3</span><br><span class="line">a2&#x3D;&#x3D;&gt;4</span><br><span class="line">线程 【a2&#x3D;&#x3D;&gt;】 释放锁 结束</span><br><span class="line">线程 【a3&#x3D;&#x3D;&gt;】 进来了 获取到锁 开始</span><br><span class="line">a3&#x3D;&#x3D;&gt;1</span><br><span class="line">a3&#x3D;&#x3D;&gt;2</span><br><span class="line">a3&#x3D;&#x3D;&gt;3</span><br><span class="line">a3&#x3D;&#x3D;&gt;4</span><br><span class="line">线程 【a3&#x3D;&#x3D;&gt;】 释放锁 结束</span><br><span class="line">线程 【a4&#x3D;&#x3D;&gt;】 进来了 获取到锁 开始</span><br><span class="line">a4&#x3D;&#x3D;&gt;1</span><br><span class="line">a4&#x3D;&#x3D;&gt;2</span><br><span class="line">a4&#x3D;&#x3D;&gt;3</span><br><span class="line">a4&#x3D;&#x3D;&gt;4</span><br><span class="line">线程 【a4&#x3D;&#x3D;&gt;】 释放锁 结束</span><br><span class="line">线程 【a5&#x3D;&#x3D;&gt;】 进来了 获取到锁 开始</span><br><span class="line">a5&#x3D;&#x3D;&gt;1</span><br><span class="line">a5&#x3D;&#x3D;&gt;2</span><br><span class="line">a5&#x3D;&#x3D;&gt;3</span><br><span class="line">a5&#x3D;&#x3D;&gt;4</span><br><span class="line">线程 【a5&#x3D;&#x3D;&gt;】 释放锁 结束</span><br><span class="line"></span><br><span class="line">Process finished with exit code 0</span><br></pre></td></tr></table></figure>
+
+<h2 id="tryLock-方法"><a href="#tryLock-方法" class="headerlink" title="tryLock()方法"></a>tryLock()方法</h2><blockquote>
+<p>在调用时,锁如果没有被另一个线程持有的情况下，才获取该锁</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ReentrantLockTryLock</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> ReentrantLock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">serviceHandle</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (lock.tryLock()) &#123;</span><br><span class="line">                log.info(Thread.currentThread().getName() + <span class="string">"获取到锁 （🔒） "</span>);</span><br><span class="line">                Thread.sleep(<span class="number">4000</span>);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                log.info(Thread.currentThread().getName() + <span class="string">"未获取到锁（🔒）"</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;<span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (lock.isHeldByCurrentThread()) &#123;</span><br><span class="line">                lock.unlock();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        ReentrantLockTryLock reentrantLockTryLock = <span class="keyword">new</span> ReentrantLockTryLock();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">new</span> Thread(reentrantLockTryLock::serviceHandle,<span class="string">"t1"</span>).start();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">new</span> Thread(reentrantLockTryLock::serviceHandle,<span class="string">"t2"</span>).start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">00:33:58.045 [t2] INFO com.fengabner.lock.ReentrantLockTryLock - t2未获取到锁（🔒）</span><br><span class="line">00:33:58.045 [t1] INFO com.fengabner.lock.ReentrantLockTryLock - t1获取到锁 （🔒） </span><br><span class="line"></span><br><span class="line">Process finished with exit code 0</span><br></pre></td></tr></table></figure>
+
+<h2 id="lockInterruptibly-方法"><a href="#lockInterruptibly-方法" class="headerlink" title="lockInterruptibly()方法"></a>lockInterruptibly()方法</h2><blockquote>
+<p>中断等待获取锁的线程,如果当前线程未被中断,则去获取锁,已被中断则抛异常。</p>
+<p>当两个线程同时通过lock.lockInterruptibly()获取某个锁时，假若此时线程A获取到了锁，而线程B只有等待，那么对线程B调用threadB.interrupt()方法能够中断线程B的等待过程。</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ReentrantLockInterruptibly</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> ReentrantLock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">serviceHandle</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            log.info(<span class="string">"thread &#123;&#125; get lock"</span>,Thread.currentThread().getName());</span><br><span class="line">            lock.lockInterruptibly();</span><br><span class="line"></span><br><span class="line">            log.info(<span class="string">"thread &#123;&#125; has lock"</span>,Thread.currentThread().getName());</span><br><span class="line"></span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;<span class="number">5</span>;i++) &#123;</span><br><span class="line">                Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">                log.info(<span class="string">"Thread &#123;&#125; do something...&#123;&#125;"</span>,Thread.currentThread().getName(),i);</span><br><span class="line">            &#125;</span><br><span class="line">            log.info(<span class="string">"thread &#123;&#125; lock end"</span>,Thread.currentThread().getName());</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            log.error(<span class="string">"thread &#123;&#125; 被中断"</span>,Thread.currentThread().getName());</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;<span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (lock.isHeldByCurrentThread()) &#123;<span class="comment">// 查询当前线程是否持有此锁</span></span><br><span class="line">                lock.unlock();</span><br><span class="line">                log.info(<span class="string">"thread &#123;&#125; 释放锁"</span>,Thread.currentThread().getName());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">        ReentrantLockInterruptibly reentrantLockInterruptibly = <span class="keyword">new</span> ReentrantLockInterruptibly();</span><br><span class="line">        <span class="keyword">new</span> Thread(reentrantLockInterruptibly::serviceHandle,<span class="string">"t1"</span>).start();</span><br><span class="line"></span><br><span class="line">        Thread t2 = <span class="keyword">new</span> Thread(reentrantLockInterruptibly::serviceHandle,<span class="string">"t2"</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        Thread.sleep(<span class="number">100</span>);</span><br><span class="line"></span><br><span class="line">        t2.start();</span><br><span class="line"></span><br><span class="line">        Thread.sleep(<span class="number">100</span>);</span><br><span class="line">        <span class="comment">// 如果线程t2没有得到锁，中断t2的等待</span></span><br><span class="line">        t2.interrupt();</span><br><span class="line">        log.info(<span class="string">"main end ..."</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">23:44:02.148 [t1] INFO com.fengabner.lock.ReentrantLockInterruptibly - thread t1 get lock</span><br><span class="line">23:44:02.156 [t1] INFO com.fengabner.lock.ReentrantLockInterruptibly - thread t1 has lock</span><br><span class="line">23:44:02.249 [t2] INFO com.fengabner.lock.ReentrantLockInterruptibly - thread t2 get lock</span><br><span class="line">23:44:02.349 [main] INFO com.fengabner.lock.ReentrantLockInterruptibly - main end ...</span><br><span class="line">23:44:02.349 [t2] ERROR com.fengabner.lock.ReentrantLockInterruptibly - thread t2 被中断</span><br><span class="line">java.lang.InterruptedException</span><br><span class="line">	at java.util.concurrent.locks.AbstractQueuedSynchronizer.doAcquireInterruptibly(AbstractQueuedSynchronizer.java:898)</span><br><span class="line">	at java.util.concurrent.locks.AbstractQueuedSynchronizer.acquireInterruptibly(AbstractQueuedSynchronizer.java:1222)</span><br><span class="line">	at java.util.concurrent.locks.ReentrantLock.lockInterruptibly(ReentrantLock.java:335)</span><br><span class="line">	at com.fengabner.lock.ReentrantLockInterruptibly.serviceHandle(ReentrantLockInterruptibly.java:21)</span><br><span class="line">	at java.lang.Thread.run(Thread.java:748)</span><br><span class="line">23:44:03.158 [t1] INFO com.fengabner.lock.ReentrantLockInterruptibly - Thread t1 do something...0</span><br><span class="line">23:44:04.161 [t1] INFO com.fengabner.lock.ReentrantLockInterruptibly - Thread t1 do something...1</span><br><span class="line">23:44:05.163 [t1] INFO com.fengabner.lock.ReentrantLockInterruptibly - Thread t1 do something...2</span><br><span class="line">23:44:06.167 [t1] INFO com.fengabner.lock.ReentrantLockInterruptibly - Thread t1 do something...3</span><br><span class="line">23:44:07.170 [t1] INFO com.fengabner.lock.ReentrantLockInterruptibly - Thread t1 do something...4</span><br><span class="line">23:44:07.170 [t1] INFO com.fengabner.lock.ReentrantLockInterruptibly - thread t1 lock end</span><br><span class="line">23:44:07.170 [t1] INFO com.fengabner.lock.ReentrantLockInterruptibly - thread t1 释放锁</span><br><span class="line"></span><br><span class="line">Process finished with exit code 0</span><br></pre></td></tr></table></figure>
+
+<h2 id="getHoldCount"><a href="#getHoldCount" class="headerlink" title="getHoldCount()"></a>getHoldCount()</h2><blockquote>
+<p>查询当前线程保持锁定的个数，也就是调用lock()方法的个数</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ReentrantLockGetHoldCount</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> ReentrantLock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">serviceHandle1</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            lock.lock();</span><br><span class="line"></span><br><span class="line">            log.info(<span class="string">"&#123;&#125; getHoldCount : &#123;&#125;"</span>,Thread.currentThread().getName(),lock.getHoldCount());</span><br><span class="line"></span><br><span class="line">            <span class="keyword">this</span>.serviceHandle2();</span><br><span class="line">        &#125;<span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">serviceHandle2</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            lock.lock();</span><br><span class="line">            log.info(<span class="string">"&#123;&#125; getHoldCount : &#123;&#125;"</span>,Thread.currentThread().getName(),lock.getHoldCount());</span><br><span class="line">        &#125;<span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        ReentrantLockGetHoldCount reentrantLockGetHoldCount = <span class="keyword">new</span> ReentrantLockGetHoldCount();</span><br><span class="line">        <span class="keyword">new</span> Thread(reentrantLockGetHoldCount::serviceHandle1,<span class="string">"t1"</span>).start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">00:40:33.573 [t1] INFO com.fengabner.lock.ReentrantLockGetHoldCount - t1 getHoldCount : 1</span><br><span class="line">00:40:33.581 [t1] INFO com.fengabner.lock.ReentrantLockGetHoldCount - t1 getHoldCount : 2</span><br><span class="line"></span><br><span class="line">Process finished with exit code 0</span><br></pre></td></tr></table></figure>
+
+<h2 id="isHeldByCurrentThread"><a href="#isHeldByCurrentThread" class="headerlink" title="isHeldByCurrentThread()"></a>isHeldByCurrentThread()</h2><blockquote>
+<p>查询当前线程是否持有此锁</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ReentrantLockIsHeldByCurrentThread</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    ReentrantLock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">serviceHandle</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            log.info(<span class="string">"当前线程&#123;&#125;是否持有锁 &#123;&#125;"</span>, Thread.currentThread().getName(), lock.isHeldByCurrentThread());</span><br><span class="line">            lock.lock();</span><br><span class="line">            log.info(<span class="string">"当前线程&#123;&#125;是否持有锁 &#123;&#125;"</span>, Thread.currentThread().getName(), lock.isHeldByCurrentThread());</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">            log.info(<span class="string">"当前线程&#123;&#125;释放了锁"</span>, Thread.currentThread().getName());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        ReentrantLockIsHeldByCurrentThread reentrantLockIsHeldByCurrentThread = <span class="keyword">new</span> ReentrantLockIsHeldByCurrentThread();</span><br><span class="line">        <span class="keyword">new</span> Thread(reentrantLockIsHeldByCurrentThread::serviceHandle, <span class="string">"t1"</span>).start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">11:45:24.377 [t1] INFO com.fengabner.lock.ReentrantLockIsHeldByCurrentThread - 当前线程t1是否持有锁 false</span><br><span class="line">11:45:24.384 [t1] INFO com.fengabner.lock.ReentrantLockIsHeldByCurrentThread - 当前线程t1是否持有锁 true</span><br><span class="line">11:45:24.384 [t1] INFO com.fengabner.lock.ReentrantLockIsHeldByCurrentThread - 当前线程t1释放了锁</span><br><span class="line"></span><br><span class="line">Process finished with exit code 0</span><br></pre></td></tr></table></figure>
+
+<h2 id="getWaitQueueLength-Condition-condition"><a href="#getWaitQueueLength-Condition-condition" class="headerlink" title="getWaitQueueLength(Condition condition)"></a>getWaitQueueLength(Condition condition)</h2><blockquote>
+<p>返回正在等待与此锁相关的指定条件的线程估计数</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ReentrantLockGetWaitQueueLength</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    ReentrantLock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line">    <span class="keyword">public</span> Condition condition = lock.newCondition();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">serviceWaitHandle</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            lock.lock();</span><br><span class="line">            condition.await();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">serviceSignalHandle</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            lock.lock();</span><br><span class="line">            log.info(<span class="string">"当前有&#123;&#125;个正在等待 condition"</span>, lock.getWaitQueueLength(condition));</span><br><span class="line">            condition.signal();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">        ReentrantLockGetWaitQueueLength lockGetWaitQueueLength = <span class="keyword">new</span> ReentrantLockGetWaitQueueLength();</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">10</span>; i++) &#123;</span><br><span class="line">            <span class="keyword">new</span> Thread(lockGetWaitQueueLength::serviceWaitHandle).start();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> j = <span class="number">0</span>; j &lt; <span class="number">10</span>; j++) &#123;</span><br><span class="line">            <span class="keyword">new</span> Thread(lockGetWaitQueueLength::serviceSignalHandle).start();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">15:30:30.508 [Thread-10] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有10个正在等待 condition</span><br><span class="line">15:30:30.525 [Thread-11] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有9个正在等待 condition</span><br><span class="line">15:30:30.527 [Thread-12] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有8个正在等待 condition</span><br><span class="line">15:30:30.527 [Thread-13] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有7个正在等待 condition</span><br><span class="line">15:30:30.528 [Thread-14] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有6个正在等待 condition</span><br><span class="line">15:30:30.529 [Thread-15] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有5个正在等待 condition</span><br><span class="line">15:30:30.529 [Thread-16] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有4个正在等待 condition</span><br><span class="line">15:30:30.529 [Thread-17] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有3个正在等待 condition</span><br><span class="line">15:30:30.530 [Thread-18] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有2个正在等待 condition</span><br><span class="line">15:30:30.530 [Thread-19] INFO com.fengabner.lock.ReentrantLockGetWaitQueueLength - 当前有1个正在等待 condition</span><br><span class="line"></span><br><span class="line">Process finished with exit code 0</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+    <div>
+      
+        <div>
+    
+        <div style="text-align:center;color: #ccc;font-size:14px;">-------------本文结束<i class="fa fa-paw"></i>感谢您的阅读-------------</div>
+    
+</div>
+      
+    </div>
+
+
+    
+    
+    
+        <div class="reward-container">
+  <div>如果让您有收获，您的支持将鼓励我继续创作</div>
+  <button onclick="var qr = document.getElementById('qr'); qr.style.display = (qr.style.display === 'none') ? 'block' : 'none';">
+    打赏
+  </button>
+  <div id="qr" style="display: none;">
+      
+      <div style="display: inline-block;">
+        <img src="/images/wechatpay.png" alt="fengabner 微信支付">
+        <p>微信支付</p>
+      </div>
+
+  </div>
+</div>
+
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>fengabner
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="http://www.fengabner.com/2020/07/17/java%E5%B9%B6%E5%8F%91%E4%B9%8BReentrantLock%E7%AE%80%E5%8D%95%E4%BB%8B%E7%BB%8D/" title="java并发之ReentrantLock简单介绍">http://www.fengabner.com/2020/07/17/java并发之ReentrantLock简单介绍/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/java/" rel="tag"># java</a>
+              <a href="/tags/%E5%B9%B6%E5%8F%91/" rel="tag"># 并发</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/07/07/java%E5%B9%B6%E5%8F%91%E4%B9%8BJMM/" rel="prev" title="java并发之JMM">
+      <i class="fa fa-chevron-left"></i> java并发之JMM
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/07/24/java%E5%B9%B6%E5%8F%91%E4%B9%8BAQS%E4%BB%A5%E5%8F%8AReentrantLock%E5%8E%9F%E7%90%86/" rel="next" title="java并发之AQS以及ReentrantLock原理">
+      java并发之AQS以及ReentrantLock原理 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#ReentrantLock-简单介绍"><span class="nav-number">1.</span> <span class="nav-text">ReentrantLock 简单介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#特点"><span class="nav-number">1.1.</span> <span class="nav-text">特点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#基本语法"><span class="nav-number">1.2.</span> <span class="nav-text">基本语法</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Lock-api"><span class="nav-number">2.</span> <span class="nav-text">Lock api</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ReentrantLock-api"><span class="nav-number">3.</span> <span class="nav-text">ReentrantLock api</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ReentrantLock-简单使用"><span class="nav-number">4.</span> <span class="nav-text">ReentrantLock 简单使用</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#lock-和-unlock"><span class="nav-number">4.1.</span> <span class="nav-text">lock() 和 unlock()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#tryLock-方法"><span class="nav-number">4.2.</span> <span class="nav-text">tryLock()方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lockInterruptibly-方法"><span class="nav-number">4.3.</span> <span class="nav-text">lockInterruptibly()方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#getHoldCount"><span class="nav-number">4.4.</span> <span class="nav-text">getHoldCount()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#isHeldByCurrentThread"><span class="nav-number">4.5.</span> <span class="nav-text">isHeldByCurrentThread()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#getWaitQueueLength-Condition-condition"><span class="nav-number">4.6.</span> <span class="nav-text">getWaitQueueLength(Condition condition)</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="fengabner"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">fengabner</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="mailto:fengabner@gmail.com" title="E-Mail → mailto:fengabner@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">fengabner</span>
+</div>
+  <div class="powered-by">
+    <!--由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动-->
+    芝兰生于幽谷，不以无人而不芳
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//unpkg.com/valine/dist/Valine.min.js', () => {
+    var GUEST = ['nick', 'mail', 'link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item => {
+      return GUEST.includes(item);
+    });
+    new Valine({
+      el         : '#valine-comments',
+      verify     : false,
+      notify     : false,
+      appId      : 'zsLb43DebVgPqEPVyX2lg3Dk-gzGzoHsz',
+      appKey     : 'BfNhS70a1QUwWsVysrutmI0z',
+      placeholder: "请在此处输入您的留言",
+      avatar     : 'mm',
+      meta       : guest,
+      pageSize   : '10' || 10,
+      visitor    : false,
+      lang       : '' || 'zh-cn',
+      path       : location.pathname,
+      recordIP   : false,
+      serverURLs : ''
+    });
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>
